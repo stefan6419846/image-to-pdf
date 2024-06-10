@@ -85,7 +85,7 @@ from typing import Any, IO
 from PIL import Image, ImageFile, ImageSequence, PdfParser, features
 
 
-__version__ = "0.1"
+__version__ = "0.1.0"
 
 #
 # --------------------------------------------------------------------

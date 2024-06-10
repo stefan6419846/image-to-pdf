@@ -1,0 +1,6 @@
+include image_to_pdf/py.typed
+include tests/data/antartica-3427135_640.jpg
+include tests/data/antartica-3427135_640.md
+include tests/data/black_text_on_transparent_background.png
+include tests/data/orange_text_on_transparent_background.png
+include tests/data/white_text_on_transparent_background.png

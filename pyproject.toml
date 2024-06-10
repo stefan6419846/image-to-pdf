@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "image-to-pdf"
+description = "Convert image files to PDF."
+dynamic = ["version"]
+license = {text = "HPND"}
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [
+    {name = "Jeffrey A. Clark"},
+    {name = "stefan6419846 (standalone conversion package)"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Historical Permission Notice and Disclaimer (HPND)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+keywords = [
+    "image",
+    "pdf",
+    "conversion"
+]
+requires-python = ">=3.8, <4"
+dependencies = [
+    "Pillow",
+]
+
+[project.urls]
+Homepage = "https://github.com/stefan6419846/image-to-pdf"
+# Documentation = "https://image-to-pdf.readthedocs.io"
+Repository = "https://github.com/stefan6419846/image-to-pdf"
+Issues = "https://github.com/stefan6419846/image-to-pdf/issues"
+Changelog = "https://github.com/stefan6419846/image-to-pdf/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    # Linting
+    "flake8",
+    "flake8-bugbear",
+    "pep8-naming",
+    # Test code
+    "coverage",
+    "requests",
+    "pypdf",
+    # Spelling
+    "codespell",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "image_to_pdf.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "image_to_pdf",
+    "image_to_pdf.*"
+]
+namespaces = false
+
+[tool.codespell]
+skip = './.git/*,./.mypy*,./venv*,./docs/_build/*,*.pdf,'
+check-hidden = true
+ignore-words-list = 'assertIn,'

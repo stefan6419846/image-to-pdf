@@ -47,7 +47,7 @@ dev = [
     "flake8-bugbear",
     "pep8-naming",
     # Test code
-    "coverage",
+    "coverage[toml]",
     "requests",
     "pypdf",
     # Spelling
@@ -72,3 +72,9 @@ namespaces = false
 skip = './.git/*,./.mypy*,./venv*,./docs/_build/*,*.pdf,'
 check-hidden = true
 ignore-words-list = 'assertIn,'
+
+[tool.coverage.run]
+branch = true
+source = [
+    "image_to_pdf",
+]

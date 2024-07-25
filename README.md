@@ -2,6 +2,8 @@
 
 Convert images to PDF files, utilizing *Pillow*, while attempting to handle alpha channels in a suitable manner.
 
+Please note that (at least in my opinion) this package is only required if you really care about alpha channels and have no common set of image properties to rely on. Otherwise, most cases can probably be covered in a sufficient manner by using *Pillow* directly instead of this wrapper package.
+
 ## About
 
 I have always been looking for a good and reliable way to convert images to PDF files, while supporting images with alpha channels and avoiding undesired data loss.
@@ -33,4 +35,4 @@ Additionally, the general API is compatible to the original `PIL.PdfImagePlugin`
 
 ## License
 
-This package is subject to the terms of the HPND license.
+Like *Pillow*, which most of the code is based upon, this package is subject to the terms of the HPND license.

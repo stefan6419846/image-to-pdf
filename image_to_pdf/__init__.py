@@ -83,6 +83,17 @@ import zlib
 from typing import Any, IO
 
 from PIL import Image, ImageFile, ImageSequence, PdfParser, features
+try:
+    from PIL.ImageFile import _Tile
+except ImportError:
+    # Pillow < 10.2.0
+    from typing import NamedTuple as _NamedTuple
+
+    class _Tile(_NamedTuple):
+        codec_name: str
+        extents: tuple[int, int, int, int] | None
+        offset: int
+        args: tuple[Any, ...] | str | None
 
 
 __version__ = "0.1.0"
@@ -98,7 +109,7 @@ __version__ = "0.1.0"
 #  5. page contents
 
 
-def save_all(im: Image.Image, fp: IO[bytes], filename: str, **kwargs: Any) -> None:
+def save_all(im: Image.Image, fp: IO[bytes], filename: str | bytes, **kwargs: Any) -> None:
     save(im, fp, filename, save_all=True, **kwargs)
 
 
@@ -108,7 +119,7 @@ def save_all(im: Image.Image, fp: IO[bytes], filename: str, **kwargs: Any) -> No
 
 def _write_image(
     im: Image.Image,
-    filename: str,
+    filename: str | bytes,
     existing_pdf: PdfParser.PdfParser,
     image_refs: list[PdfParser.IndirectReference],
 ):
@@ -120,7 +131,7 @@ def _write_image(
 
     width, height = im.size
 
-    dict_object = {"BitsPerComponent": 8}
+    dict_object: dict[str, Any] = {"BitsPerComponent": 8}
     if im.mode == "1":
         if features.check("libtiff"):
             filter_name = "CCITTFaxDecode"
@@ -195,7 +206,7 @@ def _write_image(
     op = io.BytesIO()
 
     if filter_name == "ASCIIHexDecode":
-        ImageFile._save(im, op, [("hex", (0, 0) + im.size, 0, im.mode)])
+        ImageFile._save(im, op, [_Tile("hex", (0, 0) + im.size, 0, im.mode)])
     elif filter_name == "CCITTFaxDecode":
         im.save(
             op,
@@ -213,12 +224,12 @@ def _write_image(
         raise ValueError(msg)
 
     stream = op.getvalue()
+    filter_object: PdfParser.PdfArray | PdfParser.PdfName
     if filter_name == "CCITTFaxDecode":
         stream = stream[8:]
-        filter_name = PdfParser.PdfArray([PdfParser.PdfName(filter_name)])
-
+        filter_object = PdfParser.PdfArray([PdfParser.PdfName(filter_name)])
     else:
-        filter_name = PdfParser.PdfName(filter_name)
+        filter_object = PdfParser.PdfName(filter_name)
 
     image_ref = image_refs.pop(0)
     existing_pdf.write_obj(
@@ -228,7 +239,7 @@ def _write_image(
         Subtype=PdfParser.PdfName("Image"),
         Width=width,  # * 72.0 / x_resolution,
         Height=height,  # * 72.0 / y_resolution,
-        Filter=filter_name,
+        Filter=filter_object,
         Decode=decode,
         DecodeParms=parameters,
         **dict_object,
@@ -237,14 +248,15 @@ def _write_image(
     return image_ref, procset
 
 
-def save(im: Image.Image, fp: IO[bytes], filename: str, save_all: bool = False, **kwargs: Any) -> None:
+def save(im: Image.Image, fp: IO[bytes], filename: str | bytes, save_all: bool = False, **kwargs: Any) -> None:
     if not hasattr(im, "encoderinfo"):
         im.encoderinfo = kwargs
     is_appending = im.encoderinfo.get("append", False)
+    filename_str = filename.decode() if isinstance(filename, bytes) else filename
     if is_appending:
-        existing_pdf = PdfParser.PdfParser(f=fp, filename=filename, mode="r+b")
+        existing_pdf = PdfParser.PdfParser(f=fp, filename=filename_str, mode="r+b")
     else:
-        existing_pdf = PdfParser.PdfParser(f=fp, filename=filename, mode="w+b")
+        existing_pdf = PdfParser.PdfParser(f=fp, filename=filename_str, mode="w+b")
 
     dpi = im.encoderinfo.get("dpi")
     if dpi:
@@ -291,12 +303,7 @@ def save(im: Image.Image, fp: IO[bytes], filename: str, save_all: bool = False, 
     for im in ims:
         im_number_of_pages = 1
         if save_all:
-            try:
-                im_number_of_pages = im.n_frames
-            except AttributeError:
-                # Image format does not have n_frames.
-                # It is a single frame image
-                pass
+            im_number_of_pages = getattr(im, "n_frames", 1)
         number_of_pages += im_number_of_pages
         for _ in range(im_number_of_pages):
             image_refs.append(existing_pdf.next_object_id(0))
@@ -313,7 +320,9 @@ def save(im: Image.Image, fp: IO[bytes], filename: str, save_all: bool = False, 
 
     page_number = 0
     for im_sequence in ims:
-        im_pages = ImageSequence.Iterator(im_sequence) if save_all else [im_sequence]
+        im_pages: ImageSequence.Iterator | list[Image.Image] = (
+            ImageSequence.Iterator(im_sequence) if save_all else [im_sequence]
+        )
         for im in im_pages:
             image_ref, procset = _write_image(im, filename, existing_pdf, image_refs)
 

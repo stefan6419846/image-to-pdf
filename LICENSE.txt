@@ -5,14 +5,14 @@ The Python Imaging Library (PIL) is
 
 Pillow is the friendly PIL fork. It is
 
-    Copyright © 2010-2024 by Jeffrey A. Clark and contributors
+    Copyright © 2010 by Jeffrey A. Clark and contributors
 
 image-to-pdf is largely based upon the Pillow code. It is
 
     Copyright © 2024 stefan6419846
 
-Like PIL and Pillow, image-to-pdf is licensed under the open source HPND
-License:
+Like PIL and Pillow, image-to-pdf is licensed under the open source
+MIT-CMU License:
 
 By obtaining, using, and/or copying this software and/or its associated
 documentation, you agree that you have read, understood, and will comply

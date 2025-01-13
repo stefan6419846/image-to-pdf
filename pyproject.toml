@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "image-to-pdf"
 description = "Convert image files to PDF."
 dynamic = ["version"]
-license = {text = "HPND"}
+license = {text = "MIT-CMU"}
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     {name = "Jeffrey A. Clark"},
@@ -15,7 +15,7 @@ authors = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Historical Permission Notice and Disclaimer (HPND)",
+    "License :: OSI Approved :: CMU License (MIT-CMU)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Multimedia :: Graphics",

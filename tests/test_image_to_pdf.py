@@ -15,9 +15,9 @@
 #
 # Pillow is the friendly PIL fork. It is
 #
-#     Copyright © 2010-2024 by Jeffrey A. Clark and contributors
+#     Copyright © 2010 by Jeffrey A. Clark and contributors
 #
-# Like PIL, Pillow is licensed under the open source HPND License:
+# Like PIL, Pillow is licensed under the open source MIT-CMU License:
 #
 # By obtaining, using, and/or copying this software and/or its associated
 # documentation, you agree that you have read, understood, and will comply
@@ -41,7 +41,7 @@
 #
 # ---------------------------------------------------------------------------
 #
-# This modified implementation is subject to same HPND license with the
+# This modified implementation is subject to same MIT-CMU license with the
 # following additional copyright line:
 #
 # ---------------------------------------------------------------------------

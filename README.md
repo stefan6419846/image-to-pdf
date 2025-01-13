@@ -35,4 +35,4 @@ Additionally, the general API is compatible to the original `PIL.PdfImagePlugin`
 
 ## License
 
-Like *Pillow*, which most of the code is based upon, this package is subject to the terms of the HPND license.
+Like *Pillow*, which most of the code is based upon, this package is subject to the terms of the MIT-CMU license.

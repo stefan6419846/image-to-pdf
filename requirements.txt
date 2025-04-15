@@ -1,2 +1,2 @@
-Pillow==11.2.0
+Pillow==11.2.1
 pypdf==5.4.0

@@ -1,2 +1,2 @@
 Pillow==11.3.0
-pypdf==5.8.0
+pypdf==5.9.0

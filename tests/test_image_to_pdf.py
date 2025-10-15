@@ -74,12 +74,12 @@ DATA_PATH = Path(__file__).parent / "data"
 
 class BaseTestCase(TestCase):
     @contextmanager
-    def load_image(self, name: str = "antartica-3427135_640.jpg") -> Generator[Image.Image, None, None]:
+    def load_image(self, name: str = "antartica-3427135_640.jpg") -> Generator[Image.Image]:
         with Image.open(DATA_PATH / name) as image:
             yield image
 
     @contextmanager
-    def load_image_from_url(self, url: str, suffix: str = ".png") -> Generator[Image.Image, None, None]:
+    def load_image_from_url(self, url: str, suffix: str = ".png") -> Generator[Image.Image]:
         response = requests.get(url)
         self.assertEqual(200, response.status_code)
         with NamedTemporaryFile(suffix=suffix) as fd:
@@ -352,7 +352,7 @@ class UpstreamTestCase(BaseTestCase):
         # works correctly when overwriting the default `PdfImagePlugin`.
         with self.load_image() as image:
 
-            def image_generator() -> Generator[Image.Image, None, None]:
+            def image_generator() -> Generator[Image.Image]:
                 yield image.copy()
                 yield image.copy()
 

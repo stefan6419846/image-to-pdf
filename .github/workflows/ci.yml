@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: install OS packages
         run: |
-          sudo apt-get upgrade
+          sudo apt-get upgrade --fix-missing
           sudo apt-get update
           sudo apt-get install poppler-utils mupdf-tools
       - name: install pip

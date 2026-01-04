@@ -1,6 +1,7 @@
 # Development version
 
 * Drop support for Python <= 3.9.
+* Make tests compatible to *Pillow* >= 12.1.0
 
 # Version 0.2.0 - 2025-03-15
 

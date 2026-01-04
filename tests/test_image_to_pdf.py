@@ -101,7 +101,11 @@ class BaseTestCase(TestCase):
         self.assertEqual(mode or expected.mode, actual.mode)
 
         difference = ImageChops.difference(expected, actual)
-        pixels = list(difference.getdata())
+        try:
+            pixels = list(difference.get_flattened_data())
+        except AttributeError:
+            # Pillow < 12.1.0
+            pixels = list(difference.getdata())
         if isinstance(pixels[0], tuple):
             no_diff_value = tuple([0] * len(pixels[0]))
             diff_count = sum(1 if x != no_diff_value else 0 for x in pixels)

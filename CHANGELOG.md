@@ -1,5 +1,7 @@
 # Development version
 
+# Version 0.3.0 - 2026-10-22
+
 * Use *Pillow* plugin methods directly. This avoids a `KeyError` if the JPEG plugin is not loaded yet. (Ported from upstream.)
 * Avoid unused object IDs. (Ported from upstream.)
 * Drop support for Python <= 3.9.

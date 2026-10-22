@@ -1,7 +1,12 @@
 # Development version
 
+* Use *Pillow* plugin methods directly. This avoids a `KeyError` if the JPEG plugin is not loaded yet. (Ported from upstream.)
+* Avoid unused object IDs. (Ported from upstream.)
 * Drop support for Python <= 3.9.
-* Make tests compatible to *Pillow* >= 12.1.0
+* Drop support for *Pillow* < 10.2.0.
+* Make tests compatible with *Pillow* >= 12.1.0.
+* Use lazy imports for Python 3.15. (Ported from upstream.)
+* Enforce strict typing.
 
 # Version 0.2.0 - 2025-03-15
 

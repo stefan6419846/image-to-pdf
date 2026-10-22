@@ -75,25 +75,19 @@
 ##
 from __future__ import annotations
 
+__lazy_modules__ = {"io", "math"}
+
 import io
 import math
 import os
 import time
 import zlib
-from typing import Any, IO
 
 from PIL import Image, ImageFile, ImageSequence, PdfParser, features
-try:
-    from PIL.ImageFile import _Tile
-except ImportError:
-    # Pillow < 10.2.0
-    from typing import NamedTuple as _NamedTuple
 
-    class _Tile(_NamedTuple):
-        codec_name: str
-        extents: tuple[int, int, int, int] | None
-        offset: int
-        args: tuple[Any, ...] | str | None
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from typing import Any, IO
 
 
 __version__ = "0.2.0"
@@ -121,8 +115,7 @@ def _write_image(
     im: Image.Image,
     filename: str | bytes,
     existing_pdf: PdfParser.PdfParser,
-    image_refs: list[PdfParser.IndirectReference],
-):
+) -> tuple[PdfParser.IndirectReference, str]:
     parameters = None
     decode = None
     smask = None
@@ -163,6 +156,7 @@ def _write_image(
     elif im.mode == "P":
         filter_name = "ASCIIHexDecode"
         palette = im.getpalette()
+        assert palette is not None
         dict_object["ColorSpace"] = [
             PdfParser.PdfName("Indexed"),
             PdfParser.PdfName("DeviceRGB"),
@@ -197,7 +191,7 @@ def _write_image(
         smask = smask.getchannel("A")
         smask.encoderinfo = {}
 
-        image_ref = _write_image(smask, filename, existing_pdf, image_refs)[0]
+        image_ref = _write_image(smask, filename, existing_pdf)[0]
         dict_object["SMask"] = image_ref
 
     #
@@ -206,7 +200,7 @@ def _write_image(
     op = io.BytesIO()
 
     if filter_name == "ASCIIHexDecode":
-        ImageFile._save(im, op, [_Tile("hex", (0, 0) + im.size, 0, im.mode)])
+        ImageFile._save(im, op, [ImageFile._Tile("hex", (0, 0, *im.size), 0, im.mode)])
     elif filter_name == "CCITTFaxDecode":
         im.save(
             op,
@@ -216,7 +210,9 @@ def _write_image(
             strip_size=math.ceil(width / 8) * height,
         )
     elif filter_name == "DCTDecode":
-        Image.SAVE["JPEG"](im, op, filename)
+        from PIL import JpegImagePlugin
+
+        JpegImagePlugin._save(im, op, filename)
     elif filter_name == "FlateDecode":
         op.write(zlib.compress(im.tobytes()))
     else:
@@ -231,9 +227,8 @@ def _write_image(
     else:
         filter_object = PdfParser.PdfName(filter_name)
 
-    image_ref = image_refs.pop(0)
-    existing_pdf.write_obj(
-        image_ref,
+    image_ref = existing_pdf.write_obj(
+        ref=None,
         stream=stream,
         Type=PdfParser.PdfName("XObject"),
         Subtype=PdfParser.PdfName("Image"),
@@ -297,7 +292,6 @@ def save(im: Image.Image, fp: IO[bytes], filename: str | bytes, save_all: bool =
             append_im.encoderinfo = im.encoderinfo.copy()
             ims.append(append_im)
     number_of_pages = 0
-    image_refs = []
     page_refs = []
     contents_refs = []
     for im in ims:
@@ -306,10 +300,6 @@ def save(im: Image.Image, fp: IO[bytes], filename: str | bytes, save_all: bool =
             im_number_of_pages = getattr(im, "n_frames", 1)
         number_of_pages += im_number_of_pages
         for _ in range(im_number_of_pages):
-            image_refs.append(existing_pdf.next_object_id(0))
-            if im.mode in {"LA", "RGBA"} or (im.mode == "P" and "transparency" in im.info):
-                image_refs.append(existing_pdf.next_object_id(0))
-
             page_refs.append(existing_pdf.next_object_id(0))
             contents_refs.append(existing_pdf.next_object_id(0))
             existing_pdf.pages.append(page_refs[-1])
@@ -324,7 +314,7 @@ def save(im: Image.Image, fp: IO[bytes], filename: str | bytes, save_all: bool =
             ImageSequence.Iterator(im_sequence) if save_all else [im_sequence]
         )
         for im in im_pages:
-            image_ref, procset = _write_image(im, filename, existing_pdf, image_refs)
+            image_ref, procset = _write_image(im, filename, existing_pdf)
 
             #
             # page

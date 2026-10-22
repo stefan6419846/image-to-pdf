@@ -29,7 +29,7 @@ keywords = [
 ]
 requires-python = ">=3.10, <4"
 dependencies = [
-    "Pillow",
+    "pillow>=10.2.0",
 ]
 
 [project.urls]
@@ -45,12 +45,15 @@ dev = [
     "flake8",
     "flake8-bugbear",
     "pep8-naming",
+    # Spelling
+    "codespell",
     # Test code
     "coverage[toml]",
     "requests",
     "pypdf",
-    # Spelling
-    "codespell",
+    # Typing
+    "mypy",
+    "types-requests",
 ]
 
 [tool.setuptools]
@@ -77,3 +80,8 @@ branch = true
 source = [
     "image_to_pdf",
 ]
+
+[tool.mypy]
+strict = true
+files = "image_to_pdf,tests"
+exclude = []

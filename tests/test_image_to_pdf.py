@@ -60,12 +60,13 @@ from io import BytesIO
 from operator import attrgetter
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from typing import Any, Generator
+from types import TracebackType
+from typing import Any, Callable, Generator
 from unittest import mock, TestCase
 
 import image_to_pdf
 import requests
-from PIL import Image, ImageChops, PdfParser
+from PIL import Image, ImageChops, PdfParser, features
 from pypdf import PdfReader
 
 
@@ -102,7 +103,7 @@ class BaseTestCase(TestCase):
 
         difference = ImageChops.difference(expected, actual)
         try:
-            pixels = list(difference.get_flattened_data())
+            pixels = list(difference.get_flattened_data())  # type: ignore[attr-defined]
         except AttributeError:
             # Pillow < 12.1.0
             pixels = list(difference.getdata())
@@ -118,7 +119,7 @@ class BaseTestCase(TestCase):
         reader = PdfReader(path)
         self.assertEqual(expected, len(reader.pages))
 
-    def save_as_pdf(self, image: Image.Image, save_all: bool = False, check_size: bool = True, **kwargs: Any) -> Path:
+    def save_as_pdf(self, image: Image.Image, *, save_all: bool = False, check_size: bool = True, **kwargs: Any) -> Path:
         method = image_to_pdf.save_all if save_all else image_to_pdf.save
 
         with NamedTemporaryFile(suffix=".pdf", delete=False) as _file:
@@ -138,21 +139,21 @@ class BaseTestCase(TestCase):
         if check_size:
             contents = outfile.read_bytes()
             size = tuple(map(float, contents.split(b"/MediaBox [ 0 0 ")[1].split(b"]")[0].split()))
-            self.assertEqual(image.size, size)
+            self.assertEqual(image.size, tuple(map(int, size)))
         return outfile
 
 
 class ConversionTestCase(BaseTestCase):
-    def test_image_mode_1__has_libtiff(self):
-        self.assertTrue(image_to_pdf.features.check("libtiff"))
+    def test_image_mode_1__has_libtiff(self) -> None:
+        self.assertTrue(features.check("libtiff"))
         with self.load_image() as image:
             image = image.convert("1")
             outfile = self.save_as_pdf(image)
             # DATA_PATH.joinpath("antartica-3427135_640_1_libtiff.pdf").write_bytes(outfile.read_bytes())
             self.assert_size(outfile, 80000, 100000)
 
-    def test_image_mode_1__no_libtiff(self):
-        with mock.patch.object(image_to_pdf.features, "check", return_value=False) as check_mock:
+    def test_image_mode_1__no_libtiff(self) -> None:
+        with mock.patch("image_to_pdf.features.check", return_value=False) as check_mock:
             with self.load_image() as image:
                 image = image.convert("1")
                 outfile = self.save_as_pdf(image)
@@ -160,34 +161,34 @@ class ConversionTestCase(BaseTestCase):
                 self.assert_size(outfile, 160000, 180000)
             check_mock.assert_called_once_with("libtiff")
 
-    def test_image_mode_l(self):
+    def test_image_mode_l(self) -> None:
         with self.load_image() as image:
             image = image.convert("L")
             outfile = self.save_as_pdf(image)
             # DATA_PATH.joinpath("antartica-3427135_640_l.pdf").write_bytes(outfile.read_bytes())
             self.assert_size(outfile, 19000, 20000)
 
-    def test_image_mode_la(self):
+    def test_image_mode_la(self) -> None:
         for prefix, size_range in [
             ("black", (50000, 60000)),
             ("orange", (60000, 70000)),
             ("white", (40000, 50000)),
         ]:
             with self.subTest(prefix=prefix):
-                with self.load_image(DATA_PATH / f"{prefix}_text_on_transparent_background.png") as image:
+                with self.load_image(f"{prefix}_text_on_transparent_background.png") as image:
                     image = image.convert("LA")
                     outfile = self.save_as_pdf(image)
                     # DATA_PATH.joinpath(f"{prefix}_text_on_transparent_background_la.pdf").write_bytes(outfile.read_bytes())
                     self.assert_size(outfile, *size_range)
 
-    def test_image_mode_p(self):
+    def test_image_mode_p(self) -> None:
         with self.load_image() as image:
             image = image.convert("P")
             outfile = self.save_as_pdf(image)
             # DATA_PATH.joinpath("antartica-3427135_640_p.pdf").write_bytes(outfile.read_bytes())
             self.assert_size(outfile, 555000, 556000)
 
-    def test_image_mode_p__with_transparency(self):
+    def test_image_mode_p__with_transparency(self) -> None:
         with self.load_image_from_url("https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/pil123p.png") as image:
             self.assertEqual("P", image.mode)
             self.assertIsInstance(image.info["transparency"], bytes)
@@ -197,34 +198,34 @@ class ConversionTestCase(BaseTestCase):
             self.assert_size(outfile, 55000, 56000)
             self.assertIn(b"\n/SMask ", outfile.read_bytes())
 
-    def test_image_mode_rgb(self):
+    def test_image_mode_rgb(self) -> None:
         with self.load_image() as image:
             self.assertEqual("RGB", image.mode)
             outfile = self.save_as_pdf(image)
             # DATA_PATH.joinpath("antartica-3427135_640_rgb.pdf").write_bytes(outfile.read_bytes())
             self.assert_size(outfile, 22000, 23000)
 
-    def test_image_mode_rgba(self):
+    def test_image_mode_rgba(self) -> None:
         for prefix, size_range in [
             ("black", (37000, 38000)),
             ("orange", (50000, 51000)),
             ("white", (30000, 40000)),
         ]:
             with self.subTest(prefix=prefix):
-                with self.load_image(DATA_PATH / f"{prefix}_text_on_transparent_background.png") as image:
+                with self.load_image(f"{prefix}_text_on_transparent_background.png") as image:
                     self.assertEqual("RGBA", image.mode)
                     outfile = self.save_as_pdf(image)
                     # DATA_PATH.joinpath(f"{prefix}_text_on_transparent_background_rgba.pdf").write_bytes(outfile.read_bytes())
                     self.assert_size(outfile, *size_range)
 
-    def test_image_mode_cmyk(self):
+    def test_image_mode_cmyk(self) -> None:
         with self.load_image() as image:
             image = image.convert("CMYK")
             outfile = self.save_as_pdf(image)
             # DATA_PATH.joinpath("antartica-3427135_640_cmyk.pdf").write_bytes(outfile.read_bytes())
             self.assert_size(outfile, 59000, 61000)
 
-    def test_image_mode_hsv(self):
+    def test_image_mode_hsv(self) -> None:
         with self.load_image() as image:
             image = image.convert("HSV")
             with self.assertRaisesRegex(expected_exception=ValueError, expected_regex=r"^cannot save mode HSV$"):
@@ -232,32 +233,37 @@ class ConversionTestCase(BaseTestCase):
 
 
 class RecoveryTestCase(BaseTestCase):
-    def assert_image_mode_rgba(self, check_method):
+    def assert_image_mode_rgba(self, check_method: Callable[[Image.Image, Path], None]) -> None:
         for prefix in ["black", "orange", "white"]:
             with self.subTest(prefix=prefix):
-                with self.load_image(DATA_PATH / f"{prefix}_text_on_transparent_background.png") as image:
+                with self.load_image(f"{prefix}_text_on_transparent_background.png") as image:
                     self.assertEqual("RGBA", image.mode)
                     outfile = self.save_as_pdf(image)
                     check_method(image, outfile)
 
-    def test_image_mode_rgba__pypdf(self):
-        def check(image: Image.Image, outfile: Path):
+    def test_image_mode_rgba__pypdf(self) -> None:
+        def check(image: Image.Image, outfile: Path) -> None:
             reader = PdfReader(outfile)
             new_image = reader.pages[0].images[0].image
+            self.assertIsNotNone(new_image)
+            assert new_image is not None, "mypy"
             # new_image.save(DATA_PATH.joinpath(prefix + ".png"))
             # TODO: They appear to be visually identical, but their size differs quite a bit. Why?
             self.assert_images(image, new_image, threshold=0.08616)
 
         self.assert_image_mode_rgba(check)
 
-    def test_image_mode_rgba__pdftocairo(self):
-        def check(image: Image.Image, outfile: Path):
+    def test_image_mode_rgba__pdftocairo(self) -> None:
+        def check(image: Image.Image, outfile: Path) -> None:
             with NamedTemporaryFile(suffix=".png", delete=False) as _file:
                 png_path = Path(_file.name)
             self.addCleanup(png_path.unlink)
             # Resolution of 72 due to using the same value during writing the PDF file.
+            pdftocairo = shutil.which("pdftocairo")
+            self.assertIsNotNone(pdftocairo)
+            assert pdftocairo is not None, "mypy"
             result = subprocess.run(
-                [shutil.which("pdftocairo"), "-png", "-singlefile", "-r", "72", outfile, "-"],
+                [pdftocairo, "-png", "-singlefile", "-r", "72", outfile, "-"],
                 stdout=subprocess.PIPE,
             )
             self.assertEqual(0, result.returncode)
@@ -269,39 +275,45 @@ class RecoveryTestCase(BaseTestCase):
 
         self.assert_image_mode_rgba(check)
 
-    def test_image_mode_rgba__pdfimages(self):
-        def check(image: Image.Image, outfile: Path):
-            with TemporaryDirectory() as directory:
+    def test_image_mode_rgba__pdfimages(self) -> None:
+        def check(image: Image.Image, outfile: Path) -> None:
+            with TemporaryDirectory() as temporary_directory:
+                pdfimages = shutil.which("pdfimages")
+                self.assertIsNotNone(pdfimages)
+                assert pdfimages is not None, "mypy"
                 result = subprocess.run(
-                    [shutil.which("pdfimages"), "-png", outfile, f"{directory}/out"],
+                    [pdfimages, "-png", outfile, f"{temporary_directory}/out"],
                 )
                 self.assertEqual(0, result.returncode)
-                directory = Path(directory)
+                directory = Path(temporary_directory)
                 # Image and mask extracted separately.
                 self.assertEqual({"out-000.png", "out-001.png"}, set(map(attrgetter("name"), directory.glob("*"))))
 
         self.assert_image_mode_rgba(check)
 
-    def test_image_mode_rgba__mutool(self):
-        def check(image: Image.Image, outfile: Path):
-            with TemporaryDirectory() as directory:
+    def test_image_mode_rgba__mutool(self) -> None:
+        def check(image: Image.Image, outfile: Path) -> None:
+            with TemporaryDirectory() as temporary_directory:
+                mutool = shutil.which("mutool")
+                self.assertIsNotNone(mutool)
+                assert mutool is not None, "mypy"
                 result = subprocess.run(
-                    [shutil.which("mutool"), "extract", "-a", outfile],
-                    cwd=directory,
+                    [mutool, "extract", "-a", outfile],
+                    cwd=temporary_directory,
                     stdout=subprocess.PIPE,
                 )
                 self.assertEqual(0, result.returncode)
-                directory = Path(directory)
-                # Image and mask extracted separately.
-                self.assertEqual({"image-0001.jpg", "image-0002.png"}, set(map(attrgetter("name"), directory.glob("*"))))
-                with Image.open(Path(directory, "image-0002.png")) as new_image:
+                directory = Path(temporary_directory)
+                # Image and mask extracted separately. The names are the object IDs.
+                self.assertEqual({"image-0005.jpg", "image-0006.png"}, set(map(attrgetter("name"), directory.glob("*"))))
+                with Image.open(Path(directory, "image-0006.png")) as new_image:
                     self.assert_images(image, new_image, threshold=0.002)
 
         self.assert_image_mode_rgba(check)
 
 
 class UpstreamTestCase(BaseTestCase):
-    def test_resolution(self):
+    def test_resolution(self) -> None:
         for resolution, expected_size in [
             (100, (460.8, 307.44)),
             (150, (307.2, 204.96)),
@@ -316,14 +328,15 @@ class UpstreamTestCase(BaseTestCase):
                 size = tuple(map(float, contents.split(b"/MediaBox [ 0 0 ")[1].split(b"]")[0].split()))
                 self.assertEqual(expected_size, size)
 
-    def test_dpi(self):
-        for kwargs, expected_size in [
+    def test_dpi(self) -> None:
+        test_cases: list[tuple[dict[str, Any], tuple[float, float]]] = [
             ({}, (614.4, 204.96)),
             ({"resolution": 200}, (614.4, 204.96)),
-        ]:
+        ]
+        for kwargs, expected_size in test_cases:
             with self.subTest(kwargs=kwargs):
                 with self.load_image() as image:
-                    path = self.save_as_pdf(image, dpi=(75, 150), check_size=False, **kwargs)
+                    path = self.save_as_pdf(image, check_size=False, dpi=(75, 150), **kwargs)
                 contents = path.read_bytes()
                 size = tuple(map(float, contents.split(b"stream\nq ")[1].split(b" 0 0 cm")[0].split(b" 0 0 ")))
                 self.assertEqual(expected_size, size)
@@ -331,7 +344,7 @@ class UpstreamTestCase(BaseTestCase):
                 size = tuple(map(float, contents.split(b"/MediaBox [ 0 0 ")[1].split(b"]")[0].split()))
                 self.assertEqual(expected_size, size)
 
-    def test_save_all(self):
+    def test_save_all(self) -> None:
         # Single frame image.
         with self.load_image() as image:
             outfile = self.save_as_pdf(image, save_all=True)
@@ -372,12 +385,23 @@ class UpstreamTestCase(BaseTestCase):
                 image_to_pdf.save_all(image.copy(), fd, outfile.name, append_images=[image])
             self.assert_page_count(outfile, 12)
 
-    def test_multiframe_normal_save(self):
+    def test_save_all_object_ids(self) -> None:
+        with self.load_image_from_url(
+                "https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/transparent_dispose.gif", suffix=".gif"
+        ) as image:
+            outfile = self.save_as_pdf(image, save_all=True)
+
+        with PdfParser.PdfParser(str(outfile)) as pdf:
+            # Test that each object id was used
+            for object_id in pdf.xref_table.existing_entries:
+                pdf.read_indirect(PdfParser.IndirectReference(object_id, 0))
+
+    def test_multiframe_normal_save(self) -> None:
         with self.load_image_from_url("https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/dispose_bgnd.gif", suffix=".gif") as image:
             outfile = self.save_as_pdf(image)
             self.assert_page_count(outfile, 1)
 
-    def test_pdf_open(self):
+    def test_pdf_open(self) -> None:
         # Fail on a buffer full of null bytes.
         with self.assertRaisesRegex(expected_exception=PdfParser.PdfFormatError, expected_regex=r"^trailer end not found$"):
             PdfParser.PdfParser(buf=bytearray(65536))
@@ -394,7 +418,7 @@ class UpstreamTestCase(BaseTestCase):
             pdf_filename = self.save_as_pdf(image)
 
         # Open the PDF file.
-        with PdfParser.PdfParser(filename=pdf_filename) as pdf:
+        with PdfParser.PdfParser(filename=str(pdf_filename)) as pdf:
             self.assertEqual(1, len(pdf.pages))
             self.assertTrue(pdf.should_close_buf)
             self.assertTrue(pdf.should_close_file)
@@ -415,6 +439,8 @@ class UpstreamTestCase(BaseTestCase):
                 self.assertFalse(pdf.should_close_file)
 
     def assert_pdf_pages_consistency(self, pdf: PdfParser.PdfParser) -> None:
+        self.assertIsNotNone(pdf.pages_ref)
+        assert pdf.pages_ref is not None, "mypy"
         pages_info = pdf.read_indirect(pdf.pages_ref)
         self.assertNotIn(b"Parent", pages_info)
         self.assertIn(b"Kids", pages_info)
@@ -431,13 +457,13 @@ class UpstreamTestCase(BaseTestCase):
             self.assertEqual(pdf.pages_ref, page_info[b"Parent"])
         self.assertEqual([], kids_not_used)
 
-    def test_pdf_append(self):
+    def test_pdf_append(self) -> None:
         # Make a PDF file.
         with self.load_image() as image:
             pdf_filename = self.save_as_pdf(image, producer="PdfParser")
 
         # Open it, check pages and info.
-        with PdfParser.PdfParser(pdf_filename, mode="r+b") as pdf:
+        with PdfParser.PdfParser(str(pdf_filename), mode="r+b") as pdf:
             self.assertEqual(1, len(pdf.pages))
             self.assertEqual(4, len(pdf.info))
             self.assertEqual(pdf_filename.stem, pdf.info.Title)
@@ -456,7 +482,7 @@ class UpstreamTestCase(BaseTestCase):
             pdf.write_xref_and_trailer()
 
         # Open it again, check pages and info again.
-        with PdfParser.PdfParser(pdf_filename) as pdf:
+        with PdfParser.PdfParser(str(pdf_filename)) as pdf:
             self.assertEqual(1, len(pdf.pages))
             self.assertEqual(8, len(pdf.info))
             self.assertEqual("abc", pdf.info.Title)
@@ -472,7 +498,7 @@ class UpstreamTestCase(BaseTestCase):
                 image_to_pdf.save_all(mode_cmyk, fd, pdf_filename.name, append=True, append_images=[mode_p])
 
         # Open the PDF again, check pages and info again.
-        with PdfParser.PdfParser(pdf_filename) as pdf:
+        with PdfParser.PdfParser(str(pdf_filename)) as pdf:
             self.assertEqual(3, len(pdf.pages))
             self.assertEqual(8, len(pdf.info))
             self.assertEqual("abc", PdfParser.decode_text(pdf.info[b"Title"]))
@@ -484,12 +510,12 @@ class UpstreamTestCase(BaseTestCase):
             self.assertIn(b"ModDate", pdf.info)
             self.assert_pdf_pages_consistency(pdf)
 
-    def test_pdf_info(self):
+    def test_pdf_info(self) -> None:
         # Make a PDF file.
         with self.load_image() as image:
             pdf_filename = self.save_as_pdf(
                 image,
-                "RGB",
+                mode="RGB",
                 title="title",
                 author="author",
                 subject="subject",
@@ -501,7 +527,7 @@ class UpstreamTestCase(BaseTestCase):
             )
 
         # Open it, check pages and info.
-        with PdfParser.PdfParser(pdf_filename) as pdf:
+        with PdfParser.PdfParser(str(pdf_filename)) as pdf:
             self.assertEqual(8, len(pdf.info))
             self.assertEqual("title", pdf.info.Title)
             self.assertEqual("author", pdf.info.Author)
@@ -513,7 +539,7 @@ class UpstreamTestCase(BaseTestCase):
             self.assertEqual(time.strptime("2001", "%Y"), pdf.info.ModDate)
             self.assert_pdf_pages_consistency(pdf)
 
-    def test_pdf_append_to_bytesio(self):
+    def test_pdf_append_to_bytesio(self) -> None:
         with self.load_image() as image:
             f = BytesIO()
             image_to_pdf.save(image, f, "dummy.pdf", format="PDF")
@@ -525,26 +551,38 @@ class UpstreamTestCase(BaseTestCase):
             self.assertLess(initial_size, len(f.getvalue()))
 
 
+class CustomTestCase(BaseTestCase):
+    def test_image__save_without_jpeg(self) -> None:
+        try:
+            with self.load_image() as image:
+                f = BytesIO()
+                old_jpeg_save = Image.SAVE.pop("JPEG", None)
+                image_to_pdf.save(image, f, "dummy.pdf", format="PDF")
+        finally:
+            if old_jpeg_save is not None:
+                Image.SAVE["JPEG"] = old_jpeg_save
+
+
 class OverwriteSaveContext:
-    def __init__(self):
+    def __init__(self) -> None:
         self._original_save = Image.SAVE["PDF"]
         self._original_save_all = Image.SAVE_ALL["PDF"]
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         Image.SAVE["PDF"] = image_to_pdf.save
         Image.SAVE_ALL["PDF"] = image_to_pdf.save_all
 
-    def __exit__(self, type_, value, traceback):
+    def __exit__(self, type_: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None) -> bool | None:
         Image.SAVE["PDF"] = self._original_save
         Image.SAVE_ALL["PDF"] = self._original_save_all
         if type_:
             # Error.
-            return
+            return None
         return True
 
 
 class IntegrationTestCase(BaseTestCase):
-    def test_rgba(self):
+    def test_rgba(self) -> None:
         with self.load_image("black_text_on_transparent_background.png") as image:
             target = BytesIO()
             image.save(target, format="PDF")

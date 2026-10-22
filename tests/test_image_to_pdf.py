@@ -103,7 +103,7 @@ class BaseTestCase(TestCase):
 
         difference = ImageChops.difference(expected, actual)
         try:
-            pixels = list(difference.get_flattened_data())  # type: ignore[attr-defined]
+            pixels = list(difference.get_flattened_data())
         except AttributeError:
             # Pillow < 12.1.0
             pixels = list(difference.getdata())
@@ -111,7 +111,7 @@ class BaseTestCase(TestCase):
             no_diff_value = tuple([0] * len(pixels[0]))
             diff_count = sum(1 if x != no_diff_value else 0 for x in pixels)
         else:
-            diff_count = sum(pixels)
+            diff_count = sum(pixels)  # type: ignore[arg-type]
         relative_difference = sum(expected.size) / diff_count
         self.assertGreaterEqual(threshold, relative_difference)
 
